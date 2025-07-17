@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "XTB Tools",
+  "description": "-",
+  "version": "1.0",
+  "action": {
+    "default_title": "Settings",
+    "default_popup": "settings.html"
+  },
+  "icons": {
+    "16": "Resources/XTB.WA.png",
+    "48": "Resources/XTB.WA.png",
+    "128": "Resources/XTB.WA.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["Resources/XTB.WA_BIG.png"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://xstation5.xtb.com/*"],
+      "css": ["styles.css"],
+      "js": [
+        "utils.js",
+        "Models/AssetRowInfo.js",
+        "Models/RowMarkerType.js",
+        "Models/RowMarker.js",
+        "Models/RowFilterType.js",
+        "Models/RowFilter.js",
+        "content.js",
+        "messageUtils.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab", 
+    "scripting"
+  ]
+}

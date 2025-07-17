@@ -1,0 +1,509 @@
+let settings = {
+	appFullName: "'XTB Tools'",
+	appName: "XtbTools",
+	appVersion: "1.1",
+	appShortName: "XTBT",
+
+	enableExtension: true,
+
+    isFakeProfitEnabled: false,
+    isNegativeProfitHidden: true,
+    isAutoCollapseEnabled: true,
+    labelMap: new Map(),
+    hiddenMarketTabs: []
+}
+
+let globals = {
+    mainContainer: null,
+    marketTabsContainer: null,
+	portfolioContainer: null,
+    balanceContainer: null,
+	profitContainer: null
+}
+
+let hasCollapsedOnce = false;
+let rowFilter = createRowFilter();
+let rowMarker = createRowMarker();
+
+// Przy inicjalizacji (wczytaniu ustawień)
+chrome.storage.sync.get([
+    'selectedFilter', 'selectedMarker',
+    'isFakeProfitEnabled', 'isNegativeProfitHidden', 'isAutoCollapseEnabled', 
+    'accountLabelsText', 'hiddenMarketTabsText'
+], (data) => {
+    const filterType = data.selectedFilter || RowFilterType.Empty.value;
+    const markerType = data.selectedMarker || RowMarkerType.Empty.value;
+
+    rowFilter = RowFilterFactory.create(filterType);
+    rowMarker = RowMarkerFactory.create(markerType);
+
+    settings.isFakeProfitEnabled = !!data.isFakeProfitEnabled;
+    settings.isNegativeProfitHidden = !!data.isNegativeProfitHidden;
+    settings.isAutoCollapseEnabled = !!data.isAutoCollapseEnabled;
+    settings.labelMap = parseAccountLabelMap(data.accountLabelsText ?? '');
+    settings.hiddenMarketTabs = parseHiddenMarketTabs(data.hiddenMarketTabsText ?? '');
+
+    console.debug("Settings: ", settings);
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.debug("Message: ", message);
+
+    if (message.type === 'settingsChanged') {
+        console.log("Otrzymano aktualizację ustawień:", message);
+
+        rowFilter = createRowFilter(message.selectedFilter);
+        rowMarker = createRowMarker(message.selectedMarker);
+
+        settings.isFakeProfitEnabled = !!message.isFakeProfitEnabled;
+        settings.isNegativeProfitHidden = !!message.isNegativeProfitHidden;
+        settings.isAutoCollapseEnabled = !!message.isAutoCollapseEnabled;
+        settings.labelMap = parseAccountLabelMap(message.accountLabelsText ?? '');
+        settings.hiddenMarketTabs = parseHiddenMarketTabs(message.hiddenMarketTabsText ?? '');
+
+        handleRows(globals.portfolioContainer);
+        handleProfit();
+        handleBalance();
+        handleMain();
+        handleMarketTabs()
+    }
+});
+
+function waitForMarketTabsContainer() {
+	console.log("Waiting for market container...");
+
+    return new Promise((resolve, reject) => {
+        const checkExist = setInterval(() => {
+            //const container = document.querySelector('div[market-watch-instruments-module] .jspPane:has(.slick-row)');
+            const container = document.querySelector('div[market-watch-module] .xs-mws-menu-tabs:has(.xs-mws-menu-tab)');
+            if (container) {
+				console.log("Main market found.", container);
+
+                clearInterval(checkExist);
+                resolve(container);
+            }
+        }, 1000);
+
+        setTimeout(() => {
+            clearInterval(checkExist);
+            reject(new Error('Main market not found!'));
+        }, 20000);
+    });
+}
+
+function waitForMainContainer() {
+	console.log("Waiting for main container...");
+
+    return new Promise((resolve, reject) => {
+        const checkExist = setInterval(() => {
+            const container = document.querySelector('div.mainContainer');
+            if (container) {
+				console.log("Main container found.");
+
+                clearInterval(checkExist);
+                resolve(container);
+            }
+        }, 1000);
+
+        setTimeout(() => {
+            clearInterval(checkExist);
+            reject(new Error('Main container not found!'));
+        }, 20000);
+    });
+}
+
+function waitForBalanceContainer() {
+	console.log("Waiting for balance container...");
+
+    return new Promise((resolve, reject) => {
+        const checkExist = setInterval(() => {
+            const container = document.querySelector('.balance-summary-container');
+            if (container) {
+				console.log("Balance container found.");
+
+                clearInterval(checkExist);
+                resolve(container);
+            }
+        }, 1000);
+
+        setTimeout(() => {
+            clearInterval(checkExist);
+            reject(new Error('Balance container not found!'));
+        }, 20000);
+    });
+}
+
+function waitForPortfolioContainer() {
+	console.log("Waiting for portfolio container...");
+
+    return new Promise((resolve, reject) => {
+        const checkExist = setInterval(() => {
+            const container = document.querySelector('div[open-trades-module] .jspPane:has(.slick-row)');
+            if (container) {
+				console.log("Portfolio container found.");
+
+                clearInterval(checkExist);
+                resolve(container);
+            }
+        }, 1000);
+
+        setTimeout(() => {
+            clearInterval(checkExist);
+            reject(new Error('Portfolio container not found!'));
+        }, 20000);
+    });
+}
+
+function waitForProfitContainer() {
+    console.log("Waiting for profit container...");
+
+    return new Promise((resolve, reject) => {
+        const checkExist = setInterval(() => {
+            const shadowRoot = document.querySelector('xs6-balance-summary')?.shadowRoot;
+            const container = shadowRoot?.querySelector('.profit-box label.profit');
+            if (container) {
+                clearInterval(checkExist);
+                resolve(container);
+            }
+        }, 1000);
+
+        setTimeout(() => {
+            clearInterval(checkExist);
+            reject(new Error('Profit label not found in shadow DOM'));
+        }, 20000);
+    });
+}
+
+function createRowFilter(name) {
+    return RowFilterFactory.create(name);
+}
+
+function createRowMarker(name) {
+    return RowMarkerFactory.create(name)
+}
+
+function parseAccountLabelMap(text) {
+  const map = new Map();
+  text.split('\n').forEach(line => {
+    const [login, label] = line.split(':').map(x => x?.trim());
+    if (login && label) {
+      map.set(login, label);
+    }
+  });
+  return map;
+}
+
+function parseHiddenMarketTabs(text) {
+    return text
+        .split(',')
+        .map(name => name.trim())
+        .filter(name => name.length > 0);
+}
+
+function setAccountLabel(accountNode) {
+    const serverSpan = accountNode.querySelector('.xs-account-label-server-part');
+    const loginSpan = accountNode.querySelector('.xs-account-label-login-part');
+
+    if (serverSpan) {
+        const serverType = serverSpan.textContent;
+
+        if (serverType === 'REAL') {
+            serverSpan.style.setProperty('color', 'red');
+        }
+        else {
+            serverSpan.style.setProperty('color', 'green');
+        }
+    }
+
+    if (loginSpan) {
+        const login = loginSpan.textContent;
+        const label = settings.labelMap.get(login);
+
+        if (label && !loginSpan.textContent.includes(label)) {
+            loginSpan.textContent += ` — ${label}`;
+        }
+    }
+}
+
+function handleMain(container) {
+    container = container || globals.mainContainer;
+
+    const comboBoxNode = container.querySelector('xs-combobox');
+    if (!comboBoxNode) {
+        console.warn('Account comboBoxNode not found.');
+        return;
+    }
+
+    const selectedAccountNode = comboBoxNode.querySelector('button > div');
+    setAccountLabel(selectedAccountNode);
+
+    const items = comboBoxNode.querySelectorAll('ul > li');
+
+    items.forEach((li, index) => {
+        setAccountLabel(li);
+    });
+}
+
+function handleRows(container) {
+    container = container || globals.portfolioContainer;
+
+    const rows = container.querySelectorAll("div.slick-row");
+    //console.debug("Rows: ", rows)
+
+    let markNextChildren = false;
+
+    rows.forEach(row => {
+        //console.debug("Row: ", row);
+
+        // Wymagane czyszczenie by nowo dodane wiersze (np. rozwinięcie grupy wyżej) nie miały błędnie oznaczonego stylu.
+        rowMarker.clear(row);
+
+        let markRow = false;
+
+        const rowInfo = AssetRowInfo.fromRow(row);
+        //console.debug("RowInfo: ", rowInfo);
+
+        if (settings.isAutoCollapseEnabled) {
+            if (!hasCollapsedOnce) {
+                if (rowInfo.isExpanded) {
+                    console.debug("Row will be collapsed", row);
+
+                    const toggle = row.querySelector('.slick-group-toggle');
+                    if (toggle) toggle.click();
+                }
+            }
+        }
+
+        let color;
+
+        // Parent row
+        if (rowInfo.isParent) {      
+            DarkOverlayRowMarker.apply(row);
+
+            markNextChildren = false;
+
+            if (rowFilter.matches(rowInfo)) {
+                markRow = true;
+                
+                if (rowInfo.isExpanded) {
+                    markNextChildren = true;
+
+                    // if (parseNumberOrDefault(amount) > 0) {
+                    //     markNextChildren = true;
+                    // }
+                }
+                else {
+                    markNextChildren = false;
+                }
+            }
+
+            color = 'WhiteSmoke';
+        }
+        // Child row
+        else {
+            //console.log("Child row: ", row);
+
+            //color = 'LightGray';
+            color = 'Gray';
+        }
+
+        row.style.setProperty('color', color, 'important');
+
+        // Główna akcja na wierszu (jeśli klasyfikuje się)
+        if (markRow || markNextChildren) {
+            //console.log("Mark current row.", row)
+
+            rowMarker.apply(row);
+        }
+
+        
+
+        // Trade type
+        const tradeTypeNode = row.children[1];
+        const tradeType = TradeType.parse(tradeTypeNode.textContent);
+
+        if (tradeType === TradeType.SELL) {
+            tradeTypeNode.style.setProperty('color', 'red', 'important');
+        } 
+        else if (tradeType === TradeType.BUY) {
+            tradeTypeNode.style.setProperty('color', 'green', 'important');
+        }
+        else {
+            tradeTypeNode.style.removeProperty('color');
+        }
+    });
+
+    hasCollapsedOnce = true;
+}
+
+function handlePortfolio(container) {
+    container = container || globals.portfolioContainer;
+
+    //handleRows(container);
+
+    const observer = new MutationObserver(mutations => {
+        //console.log("Zmiana drzewa DOM.");
+        handleRows(container);
+    });
+
+    // const observer = new MutationObserver((mutationsList) => {
+    //     let shouldHandleRows = false;
+
+    //     for (const mutation of mutationsList) {
+    //         if (mutation.type === 'childList') {
+    //             for (const node of [...mutation.addedNodes, ...mutation.removedNodes]) {
+    //                 if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('slick-row')) {
+    //                     shouldHandleRows = true;
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //         if (shouldHandleRows) break;
+    //     }
+
+    //     if (shouldHandleRows) {
+    //         handleRows(container);
+    //     }
+    // });
+
+    console.debug("Watching: ", container);
+
+    observer.observe(container, { childList: true, subtree: true });
+}
+
+function handleBalance(container) {
+    container = container || globals.balanceContainer;
+}
+
+function handleProfit(container) {
+    container = container || globals.profitContainer;
+
+    const span = container.querySelector('span');
+    if (!span) {
+        console.warn('Brak <span> w etykiecie zysku.');
+        return;
+    }
+
+    if (settings.isFakeProfitEnabled) {
+        const amount = getRandom(120000, 150000);
+
+        span.textContent = formatCurrency(amount);
+        span.class = "positive";
+    }
+    else if (settings.isNegativeProfitHidden) {
+        const value = parseNumberOrDefault(span.textContent, 0);
+        console.log("Profit amount: ", value);
+
+        if (value < 0) {
+            GrayedRowMarker.apply(span, 'gray');
+        }
+    }
+}
+
+function handleMarketTabs(container) {
+    container = container || globals.marketTabsContainer;
+    //console.debug("Market: ", container);
+
+    const tabsToHide = settings.hiddenMarketTabs;
+
+    container.querySelectorAll('.xs-mws-menu-tab').forEach(tab => {
+        const label = tab.querySelector('.xs-mws-menu-label')?.textContent.trim();
+        //console.log("Tab: ", tab, "Label: ", label);
+
+        if (tabsToHide.includes(label)) {
+            style(tab, { hide: true });
+        }
+    });
+}
+
+function handleMarketAssets(container) {
+    container = container || globals.marketTabsContainer;
+
+    console.debug("Market: ", container);
+
+    const rows = container.querySelectorAll("div.slick-row");
+
+    rows.forEach(row => {
+        //console.log("Row: ", row)
+
+        const assetNameNode = row.querySelector('.xs-display-name');
+        const assetTypeNode = row.querySelector('.xs-btn-asset-class');
+
+        if (assetNameNode && assetTypeNode) {
+            const assetName = assetNameNode.textContent.trim();
+            const assetType = assetTypeNode.textContent.trim();
+
+            console.log("Asset:", assetName, "| Class:", assetType);
+
+            if (assetType === 'CFD') {
+                HighlightRowMarker.apply(row);
+            }
+        }        
+    });
+}
+
+// ------------------------------------------------------------------------------------------------------------------------ //
+//  MAIN
+// ------------------------------------------------------------------------------------------------------------------------ //
+
+console.log(settings.appFullName + " has started.");
+
+window.onload = function () {
+    waitForMainContainer()
+        .then(container => {
+            globals.mainContainer = container;
+            console.log("Main container is ready.");
+
+            handleMain(container);
+        })
+        .catch(error => {
+            console.error("Błąd podczas oczekiwania na kontener:", error);
+        });
+
+    waitForMarketTabsContainer()
+        .then(container => {
+            globals.marketTabsContainer = container;
+            console.log("Main market is ready.");
+
+            handleMarketTabs(container);
+        })
+        .catch(error => {
+            console.error("Błąd podczas oczekiwania na kontener:", error);
+        });
+
+    waitForPortfolioContainer()
+        .then(container => {
+            globals.portfolioContainer = container;
+            console.log("Portfolio trades container is ready.");
+
+            handlePortfolio(container);
+        })
+        .catch(error => {
+            console.error("Błąd podczas oczekiwania na kontener:", error);
+        });
+
+    waitForBalanceContainer()
+        .then(container => {
+            globals.balanceContainer = container;
+            console.log("Balance summary container is ready.");
+
+            handleBalance(container);
+        })
+        .catch(error => {
+            console.error("Błąd podczas oczekiwania na kontener:", error);
+        });
+
+    waitForProfitContainer()
+        .then(container => {
+            console.debug(container);
+
+            globals.profitContainer = container;
+            console.log("Profit container is ready.");
+
+            handleProfit(container);
+        })
+        .catch(error => {
+            console.error("Błąd podczas oczekiwania na kontener:", error);
+        });
+};
+

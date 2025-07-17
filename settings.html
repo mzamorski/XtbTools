@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="settings.css" />
+  <style>
+    body {
+      background-color: rgb(21, 33, 38);
+      color: white;
+      font-family: sans-serif;
+      padding: 20px;
+      min-width: 600px;
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .logo img {
+      max-width: 100%;
+      height: auto;
+      max-height: 60px;
+    }
+
+    .settings-container {
+      display: flex;
+      gap: 20px;
+    }
+
+    .column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    label,
+    .checkbox-label {
+      margin-top: 10px;
+    }
+
+    .section-separator {
+      font-weight: bold;
+      margin: 20px 0 10px;
+      border-bottom: 1px solid #444;
+      padding-bottom: 5px;
+    }
+
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 10px;
+      background-color: #336699;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #295680;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="logo">
+    <img src="Resources/XTB.WA_BIG.png" alt="Logo" />
+  </div>
+
+  <div class="settings-container">
+
+    <!-- Lewa kolumna: Podstawowe -->
+    <div class="column">
+      <div class="section-separator">Podstawowe</div>
+
+      <label for="filter-select">Filtr wierszy:</label>
+      <select id="filter-select"></select>
+
+      <label for="marker-select">Styl oznaczenia:</label>
+      <select id="marker-select"></select>
+
+      <label class="checkbox-label" for="isFakeProfitEnabled">
+        <input type="checkbox" id="isFakeProfitEnabled" />
+        Włącz fałszywy zysk
+      </label>
+
+      <label class="checkbox-label" for="isNegativeProfitHidden">
+        <input type="checkbox" id="isNegativeProfitHidden" />
+        Ukryj ujemny zysk
+      </label>
+
+      <label class="checkbox-label" for="isAutoCollapseEnabled">
+        <input type="checkbox" id="isAutoCollapseEnabled" />
+        Automatyczne zwijanie pozycji (CFD)
+      </label>
+    </div>
+
+    <!-- Prawa kolumna: Zaawansowane -->
+    <div class="column">
+      <div class="section-separator">Dodatkowe (UI)</div>
+
+      <label for="account-labels">Etykiety kont (login:label / po jednym na linię):</label>
+      <textarea id="account-labels" rows="5"></textarea>
+
+      <label for="hidden-market-tabs">Ukryj zakładki (oddziel nazwy przecinkami):</label>
+      <input type="text" id="hidden-market-tabs" placeholder="ETF i inne, CMD" />
+    </div>
+  </div>
+
+  <button id="save-button">Zapisz</button>
+
+  <script src="Models/RowFilterType.js"></script>
+  <script src="Models/RowMarkerType.js"></script>
+  <script src="settings.js"></script>
+
+</body>
+</html>
