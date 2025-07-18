@@ -110,3 +110,35 @@ async function waitForContainer(selector, options = {}) {
         logger.error(`Error while waiting for the container ('${label}'):`, error);
     }
 }
+
+function onElementReady(selector, callback) {
+    const getElement = () =>
+        typeof selector === 'function' ? selector() : document.querySelector(selector);
+
+    const tryFind = () => {
+        const el = getElement();
+        if (el && el.nodeType === Node.ELEMENT_NODE) {
+            return el;
+        }
+        return null;
+    };
+
+    const existing = tryFind();
+    if (existing) {
+        callback(existing);
+        return;
+    }
+
+    const observer = new MutationObserver((_, obs) => {
+        const found = tryFind();
+        if (found) {
+            obs.disconnect();
+            callback(found);
+        }
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+}

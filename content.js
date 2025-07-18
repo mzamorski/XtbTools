@@ -9,6 +9,7 @@ let settings = {
     isFakeProfitEnabled: false,
     isNegativeProfitHidden: true,
     isAutoCollapseEnabled: true,
+    hideMaintenanceAlert: true,
     labelMap: new Map(),
     hiddenMarketTabs: [],
 
@@ -32,7 +33,7 @@ const logger = new Logger(settings.appShortName, 'warn');
 // Przy inicjalizacji (wczytaniu ustawień)
 chrome.storage.sync.get([
     'selectedFilter', 'selectedMarker',
-    'isFakeProfitEnabled', 'isNegativeProfitHidden', 'isAutoCollapseEnabled', 
+    'isFakeProfitEnabled', 'isNegativeProfitHidden', 'isAutoCollapseEnabled', 'hideMaintenanceAlert',
     'accountLabelsText', 'hiddenMarketTabsText'
 ], (data) => {
     const filterType = data.selectedFilter || RowFilterType.Empty.value;
@@ -44,6 +45,8 @@ chrome.storage.sync.get([
     settings.isFakeProfitEnabled = !!data.isFakeProfitEnabled;
     settings.isNegativeProfitHidden = !!data.isNegativeProfitHidden;
     settings.isAutoCollapseEnabled = !!data.isAutoCollapseEnabled;
+    settings.hideMaintenanceAlert = !!data.hideMaintenanceAlert;
+
     settings.labelMap = parseAccountLabelMap(data.accountLabelsText ?? '');
     settings.hiddenMarketTabs = parseHiddenMarketTabs(data.hiddenMarketTabsText ?? '');
 
@@ -62,6 +65,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         settings.isFakeProfitEnabled = !!message.isFakeProfitEnabled;
         settings.isNegativeProfitHidden = !!message.isNegativeProfitHidden;
         settings.isAutoCollapseEnabled = !!message.isAutoCollapseEnabled;
+        settings.hideMaintenanceAlert = !!message.hideMaintenanceAlert;
+
         settings.labelMap = parseAccountLabelMap(message.accountLabelsText ?? '');
         settings.hiddenMarketTabs = parseHiddenMarketTabs(message.hiddenMarketTabsText ?? '');
 
@@ -143,6 +148,10 @@ function handleMain(container) {
     items.forEach((li, index) => {
         setAccountLabel(li);
     });
+
+    if (settings.hideMaintenanceAlert) {
+        handleAlerts(container);
+    }
 }
 
 function handlePortfolioRows_AutoCollapse(rowInfo) {
@@ -154,6 +163,30 @@ function handlePortfolioRows_AutoCollapse(rowInfo) {
             if (toggle) toggle.click();
         }
     }
+}
+
+function onAlertsContainerFound(callback) {
+    const observer = new MutationObserver((mutations, obs) => {
+        const alerts = document.querySelector('.xs-alerts-container');
+        if (alerts) {
+            obs.disconnect(); // Stop watching once found
+            callback(alerts);
+        }
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+}
+
+function handleAlerts(container) {
+    container = container || globals.mainContainer;
+            
+    onElementReady(containerSelectors.alert, el => {
+        logger.test('An alert related to maintenance will be closed.')
+        el.remove();
+    });
 }
 
 function handlePortfolioRows(container) {
@@ -168,7 +201,7 @@ function handlePortfolioRows(container) {
         logger.debug("Row: ", row);
 
         const rowInfo = AssetRowInfo.fromRow(row);
-        logger.test("RowInfo: ", rowInfo);
+        logger.debug("RowInfo: ", rowInfo);
 
         if (settings.isAutoCollapseEnabled) {
             handlePortfolioRows_AutoCollapse(rowInfo);
@@ -240,7 +273,6 @@ function handlePortfolioRows(container) {
             // Net profit
             const profitNode = row.children[9];
             const profitAmount =  parseMoney(profitNode.textContent);
-            logger.test(profitAmount);
 
             if (profitAmount > 0) {
                 ProfitableRowMarker.apply(row);
@@ -361,6 +393,7 @@ function handleMarketAssets(container) {
 const containerSelectors = {
     marketTabs: 'div[market-watch-module] .xs-mws-menu-tabs:has(.xs-mws-menu-tab)',
     main: 'div.mainContainer',
+    alert: 'div.xs-alerts-container',
     balance: '.balance-summary-container',
     portfolio: 'div[open-trades-module] .jspPane:has(.slick-row)',
     profit: () => document.querySelector('xs6-balance-summary')?.shadowRoot?.querySelector('.profit-box label.profit'),

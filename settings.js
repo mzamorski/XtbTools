@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const fakeProfitCheckbox = document.getElementById('isFakeProfitEnabled');
   const negativeProfitCheckbox = document.getElementById('isNegativeProfitHidden');
   const autoCollapseCheckbox = document.getElementById('isAutoCollapseEnabled');
+  const hideMaintenanceAlertCheckbox = document.getElementById('hideMaintenanceAlert');
   const accountLabels = document.getElementById('account-labels');
   const hiddenMarketTabs = $('hidden-market-tabs');
 
@@ -30,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   chrome.storage.sync.get([
     'selectedFilter', 'selectedMarker',
-    'isFakeProfitEnabled', 'isNegativeProfitHidden', 'isAutoCollapseEnabled',
+    'isFakeProfitEnabled', 'isNegativeProfitHidden', 'isAutoCollapseEnabled', 'hideMaintenanceAlert',
     'accountLabelsText', 'hiddenMarketTabsText'
   ], (data) => {
     if (data.selectedFilter) filterSelect.value = data.selectedFilter;
@@ -39,6 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
     fakeProfitCheckbox.checked = !!data.isFakeProfitEnabled;
     negativeProfitCheckbox.checked = !!data.isNegativeProfitHidden;
     autoCollapseCheckbox.checked = !!data.isAutoCollapseEnabled;
+    hideMaintenanceAlertCheckbox.checked = !!data.hideMaintenanceAlert;
+
     accountLabels.value = data.accountLabelsText || '';
     hiddenMarketTabs.value = data.hiddenMarketTabsText || '';
   });
@@ -53,16 +56,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const isFakeProfitEnabled = fakeProfitCheckbox.checked;
     const isNegativeProfitHidden = negativeProfitCheckbox.checked;
     const isAutoCollapseEnabled = autoCollapseCheckbox.checked;
+    const hideMaintenanceAlert = hideMaintenanceAlertCheckbox.checked;
+
     const accountLabelsText = accountLabels.value.trim();
     const hiddenMarketTabsText = hiddenMarketTabs.value.trim();
 
+    // Save all settings to Chrome storage
     chrome.storage.sync.set({
       selectedFilter, selectedMarker,
-      isFakeProfitEnabled, isNegativeProfitHidden, isAutoCollapseEnabled,
+      isFakeProfitEnabled, isNegativeProfitHidden, isAutoCollapseEnabled, hideMaintenanceAlert,
       accountLabelsText, hiddenMarketTabsText
     }, () => {
-      console.log("Ustawienia zapisane:", selectedFilter, selectedMarker, isFakeProfitEnabled, isNegativeProfitHidden, isAutoCollapseEnabled, accountLabelsText);
+      console.log("Ustawienia zapisane:", selectedFilter, selectedMarker, isFakeProfitEnabled, isNegativeProfitHidden, isAutoCollapseEnabled, hideMaintenanceAlert, accountLabelsText);
 
+      // Notify the current tab that settings have changed
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]?.id) {
           chrome.tabs.sendMessage(tabs[0].id, {
@@ -72,10 +79,15 @@ document.addEventListener('DOMContentLoaded', () => {
             isFakeProfitEnabled,
             isNegativeProfitHidden,
             isAutoCollapseEnabled,
+            hideMaintenanceAlert,
             accountLabelsText,
             hiddenMarketTabsText
           });
         }
+            
+        // Close the popup window after the message is sent
+        window.close();
+        
       });
     });
   });
