@@ -442,68 +442,44 @@ function handleMarketAssets(container) {
     });
 }
 
+const containerSelectors = {
+    marketTabs: 'div[market-watch-module] .xs-mws-menu-tabs:has(.xs-mws-menu-tab)',
+    main: 'div.mainContainer',
+    balance: '.balance-summary-container',
+    portfolio: 'div[open-trades-module] .jspPane:has(.slick-row)',
+    profit: () => document.querySelector('xs6-balance-summary')?.shadowRoot?.querySelector('.profit-box label.profit'),
+};
+
 // ------------------------------------------------------------------------------------------------------------------------ //
 //  MAIN
 // ------------------------------------------------------------------------------------------------------------------------ //
 
 console.log(settings.appFullName + " has started.");
 
+// Top-level async initialization function
+async function initApp() {
+    try {
+        globals.mainContainer = await waitForContainer(containerSelectors.main);
+        handleMain();
+
+        globals.marketTabsContainer = await waitForContainer(containerSelectors.marketTabs);
+        handleMarketTabs();
+
+        globals.portfolioContainer = await waitForContainer(containerSelectors.portfolio);
+        handlePortfolio();
+
+        globals.balanceContainer = await waitForContainer(containerSelectors.balance);
+        handleBalance();
+
+        globals.profitContainer = await waitForContainer(containerSelectors.profit);
+        handleProfit();
+
+    } catch (error) {
+        console.error("Error while waiting for the container:", error);
+    }
+}
+
 window.onload = function () {
-    waitForMainContainer()
-        .then(container => {
-            globals.mainContainer = container;
-            console.log("Main container is ready.");
-
-            handleMain(container);
-        })
-        .catch(error => {
-            console.error("Błąd podczas oczekiwania na kontener:", error);
-        });
-
-    waitForMarketTabsContainer()
-        .then(container => {
-            globals.marketTabsContainer = container;
-            console.log("Main market is ready.");
-
-            handleMarketTabs(container);
-        })
-        .catch(error => {
-            console.error("Błąd podczas oczekiwania na kontener:", error);
-        });
-
-    waitForPortfolioContainer()
-        .then(container => {
-            globals.portfolioContainer = container;
-            console.log("Portfolio trades container is ready.");
-
-            handlePortfolio(container);
-        })
-        .catch(error => {
-            console.error("Błąd podczas oczekiwania na kontener:", error);
-        });
-
-    waitForBalanceContainer()
-        .then(container => {
-            globals.balanceContainer = container;
-            console.log("Balance summary container is ready.");
-
-            handleBalance(container);
-        })
-        .catch(error => {
-            console.error("Błąd podczas oczekiwania na kontener:", error);
-        });
-
-    waitForProfitContainer()
-        .then(container => {
-            console.debug(container);
-
-            globals.profitContainer = container;
-            console.log("Profit container is ready.");
-
-            handleProfit(container);
-        })
-        .catch(error => {
-            console.error("Błąd podczas oczekiwania na kontener:", error);
-        });
+    initApp();
 };
 

@@ -47,3 +47,54 @@ const s = el => ({
   show: () => (el.style.display = '', s(el)),
 });
 
+function waitForElement(selector, options = {}) {
+    const interval = options.interval ?? 1000;
+    const timeout = options.timeout ?? 20000;
+    const errorMsg = options.errorMsg || 'Element not found';
+
+    return new Promise((resolve, reject) => {
+        let timeoutId;
+
+        const checkExist = setInterval(() => {
+            const element = typeof selector === 'function'
+                ? selector()
+                : document.querySelector(selector);
+
+            if (element) {
+                clearInterval(checkExist);
+                clearTimeout(timeoutId);
+                resolve(element);
+            }
+        }, interval);
+
+        timeoutId = setTimeout(() => {
+            clearInterval(checkExist);
+            reject(new Error(errorMsg));
+        }, timeout);
+    });
+}
+
+async function waitForContainer(selector, name = 'Container', options = {}) {
+    const label = name;
+    const { onReady, ...waitOptions } = options;
+    
+    console.log(`Waiting for ${label}...`);
+
+    try {
+        const el = await waitForElement(selector, {
+            ...waitOptions,
+            errorMsg: waitOptions.errorMsg || `${label} not found!`
+        });
+
+        console.log(`${label} found.`);
+
+        if (typeof onReady === 'function') {
+            onReady(el);
+        }
+
+        return el;
+
+    } catch (error) {
+        console.error(`Error while waiting for the container (${label}):`, error);
+    }
+}
