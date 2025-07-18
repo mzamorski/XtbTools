@@ -31,7 +31,6 @@ function style(el, options = {}) {
         if (options.cssText) elem.style.cssText += options.cssText;
     };
 
-    // Obsługa pojedynczego elementu lub kolekcji
     if (NodeList.prototype.isPrototypeOf(el) || Array.isArray(el)) {
         el.forEach(apply);
     } else {

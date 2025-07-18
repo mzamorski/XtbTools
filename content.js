@@ -75,111 +75,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 });
 
-function waitForMarketTabsContainer() {
-	console.log("Waiting for market container...");
-
-    return new Promise((resolve, reject) => {
-        const checkExist = setInterval(() => {
-            //const container = document.querySelector('div[market-watch-instruments-module] .jspPane:has(.slick-row)');
-            const container = document.querySelector('div[market-watch-module] .xs-mws-menu-tabs:has(.xs-mws-menu-tab)');
-            if (container) {
-				console.log("Main market found.", container);
-
-                clearInterval(checkExist);
-                resolve(container);
-            }
-        }, 1000);
-
-        setTimeout(() => {
-            clearInterval(checkExist);
-            reject(new Error('Main market not found!'));
-        }, 20000);
-    });
-}
-
-function waitForMainContainer() {
-	console.log("Waiting for main container...");
-
-    return new Promise((resolve, reject) => {
-        const checkExist = setInterval(() => {
-            const container = document.querySelector('div.mainContainer');
-            if (container) {
-				console.log("Main container found.");
-
-                clearInterval(checkExist);
-                resolve(container);
-            }
-        }, 1000);
-
-        setTimeout(() => {
-            clearInterval(checkExist);
-            reject(new Error('Main container not found!'));
-        }, 20000);
-    });
-}
-
-function waitForBalanceContainer() {
-	console.log("Waiting for balance container...");
-
-    return new Promise((resolve, reject) => {
-        const checkExist = setInterval(() => {
-            const container = document.querySelector('.balance-summary-container');
-            if (container) {
-				console.log("Balance container found.");
-
-                clearInterval(checkExist);
-                resolve(container);
-            }
-        }, 1000);
-
-        setTimeout(() => {
-            clearInterval(checkExist);
-            reject(new Error('Balance container not found!'));
-        }, 20000);
-    });
-}
-
-function waitForPortfolioContainer() {
-	console.log("Waiting for portfolio container...");
-
-    return new Promise((resolve, reject) => {
-        const checkExist = setInterval(() => {
-            const container = document.querySelector('div[open-trades-module] .jspPane:has(.slick-row)');
-            if (container) {
-				console.log("Portfolio container found.");
-
-                clearInterval(checkExist);
-                resolve(container);
-            }
-        }, 1000);
-
-        setTimeout(() => {
-            clearInterval(checkExist);
-            reject(new Error('Portfolio container not found!'));
-        }, 20000);
-    });
-}
-
-function waitForProfitContainer() {
-    console.log("Waiting for profit container...");
-
-    return new Promise((resolve, reject) => {
-        const checkExist = setInterval(() => {
-            const shadowRoot = document.querySelector('xs6-balance-summary')?.shadowRoot;
-            const container = shadowRoot?.querySelector('.profit-box label.profit');
-            if (container) {
-                clearInterval(checkExist);
-                resolve(container);
-            }
-        }, 1000);
-
-        setTimeout(() => {
-            clearInterval(checkExist);
-            reject(new Error('Profit label not found in shadow DOM'));
-        }, 20000);
-    });
-}
-
 function createRowFilter(name) {
     return RowFilterFactory.create(name);
 }
@@ -456,11 +351,13 @@ const containerSelectors = {
     profit: () => document.querySelector('xs6-balance-summary')?.shadowRoot?.querySelector('.profit-box label.profit'),
 };
 
+logger = defaultLogger;
+
 // ------------------------------------------------------------------------------------------------------------------------ //
 //  MAIN
 // ------------------------------------------------------------------------------------------------------------------------ //
 
-console.log(settings.appFullName + " has started.");
+logger.log(settings.appFullName + " has started.");
 
 // Top-level async initialization function
 async function initApp() {
