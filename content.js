@@ -27,11 +27,7 @@ let hasCollapsedOnce = false;
 let rowFilter = createRowFilter();
 let rowMarker = createRowMarker();
 
-const defaultLogger = {
-    log: (...args) => console.log(`[${settings.appShortName}]`, ...args),
-    warn: (...args) => console.warn(`[${settings.appShortName}]`, ...args),
-    error: (...args) => console.error(`[${settings.appShortName}]`, ...args)
-};
+const logger = new Logger(settings.appShortName, 'warn');
 
 // Przy inicjalizacji (wczytaniu ustawień)
 chrome.storage.sync.get([
@@ -51,14 +47,14 @@ chrome.storage.sync.get([
     settings.labelMap = parseAccountLabelMap(data.accountLabelsText ?? '');
     settings.hiddenMarketTabs = parseHiddenMarketTabs(data.hiddenMarketTabsText ?? '');
 
-    console.debug("Settings: ", settings);
+    logger.debug("Settings: ", settings);
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.debug("Message: ", message);
+    logger.debug("Message: ", message);
 
     if (message.type === 'settingsChanged') {
-        console.log("Otrzymano aktualizację ustawień:", message);
+        logger.log("Otrzymano aktualizację ustawień:", message);
 
         rowFilter = createRowFilter(message.selectedFilter);
         rowMarker = createRowMarker(message.selectedMarker);
@@ -133,7 +129,7 @@ function handleMain(container) {
 
     const comboBoxNode = container.querySelector('xs-combobox');
     if (!comboBoxNode) {
-        console.warn('Account comboBoxNode not found.');
+        logger.warn('Account comboBoxNode not found.');
         return;
     }
 
@@ -151,12 +147,12 @@ function handlePortfolioRows(container) {
     container = container || globals.portfolioContainer;
 
     const rows = container.querySelectorAll("div.slick-row");
-    //console.debug("Rows: ", rows)
+    logger.debug("Rows: ", rows)
 
     let markNextChildren = false;
 
     rows.forEach(row => {
-        //console.debug("Row: ", row);
+        logger.debug("Row: ", row);
 
         // Wymagane czyszczenie by nowo dodane wiersze (np. rozwinięcie grupy wyżej) nie miały błędnie oznaczonego stylu.
         rowMarker.clear(row);
@@ -164,12 +160,12 @@ function handlePortfolioRows(container) {
         let markRow = false;
 
         const rowInfo = AssetRowInfo.fromRow(row);
-        //console.debug("RowInfo: ", rowInfo);
+        logger.debug("RowInfo: ", rowInfo);
 
         if (settings.isAutoCollapseEnabled) {
             if (!hasCollapsedOnce) {
                 if (rowInfo.isExpanded) {
-                    //console.debug("Row will be collapsed", row);
+                    logger.debug("Row will be collapsed", row);
 
                     const toggle = row.querySelector('.slick-group-toggle');
                     if (toggle) toggle.click();
@@ -204,7 +200,7 @@ function handlePortfolioRows(container) {
         }
         // Child row
         else {
-            //console.log("Child row: ", row);
+            //logger.log("Child row: ", row);
 
             //color = 'LightGray';
             color = 'Gray';
@@ -214,7 +210,7 @@ function handlePortfolioRows(container) {
 
         // Główna akcja na wierszu (jeśli klasyfikuje się)
         if (markRow || markNextChildren) {
-            //console.log("Mark current row.", row)
+            //logger.log("Mark current row.", row)
 
             rowMarker.apply(row);
         }
@@ -243,7 +239,7 @@ function handlePortfolio(container) {
     //handlePortfolioRows(container);
 
     const observer = new MutationObserver(mutations => {
-        //console.log("Zmiana drzewa DOM.");
+        //logger.log("Zmiana drzewa DOM.");
         handlePortfolioRows(container);
     });
 
@@ -267,7 +263,7 @@ function handlePortfolio(container) {
     //     }
     // });
 
-    console.debug("Watching: ", container);
+    logger.debug("Watching: ", container);
 
     observer.observe(container, { childList: true, subtree: true });
 }
@@ -281,7 +277,7 @@ function handleProfit(container) {
 
     const span = container.querySelector('span');
     if (!span) {
-        console.warn('Brak <span> w etykiecie zysku.');
+        logger.warn('Brak <span> w etykiecie zysku.');
         return;
     }
 
@@ -293,7 +289,7 @@ function handleProfit(container) {
     }
     else if (settings.isNegativeProfitHidden) {
         const value = parseNumberOrDefault(span.textContent, 0);
-        console.log("Profit amount: ", value);
+        logger.log("Profit amount: ", value);
 
         if (value < 0) {
             GrayedRowMarker.apply(span, 'gray');
@@ -303,13 +299,13 @@ function handleProfit(container) {
 
 function handleMarketTabs(container) {
     container = container || globals.marketTabsContainer;
-    //console.debug("Market: ", container);
+    logger.debug("MarketTabs: ", container);
 
     const tabsToHide = settings.hiddenMarketTabs;
 
     container.querySelectorAll('.xs-mws-menu-tab').forEach(tab => {
         const label = tab.querySelector('.xs-mws-menu-label')?.textContent.trim();
-        //console.log("Tab: ", tab, "Label: ", label);
+        logger.debug("Tab: ", tab, "Label: ", label);
 
         if (tabsToHide.includes(label)) {
             style(tab, { hide: true });
@@ -320,12 +316,12 @@ function handleMarketTabs(container) {
 function handleMarketAssets(container) {
     container = container || globals.marketTabsContainer;
 
-    console.debug("Market: ", container);
+    logger.debug("MarketAssets: ", container);
 
     const rows = container.querySelectorAll("div.slick-row");
 
     rows.forEach(row => {
-        //console.log("Row: ", row)
+        logger.debug("Row: ", row)
 
         const assetNameNode = row.querySelector('.xs-display-name');
         const assetTypeNode = row.querySelector('.xs-btn-asset-class');
@@ -334,7 +330,7 @@ function handleMarketAssets(container) {
             const assetName = assetNameNode.textContent.trim();
             const assetType = assetTypeNode.textContent.trim();
 
-            console.log("Asset:", assetName, "| Class:", assetType);
+            logger.debug("Asset:", assetName, "| Class:", assetType);
 
             if (assetType === 'CFD') {
                 HighlightRowMarker.apply(row);
@@ -351,8 +347,6 @@ const containerSelectors = {
     profit: () => document.querySelector('xs6-balance-summary')?.shadowRoot?.querySelector('.profit-box label.profit'),
 };
 
-logger = defaultLogger;
-
 // ------------------------------------------------------------------------------------------------------------------------ //
 //  MAIN
 // ------------------------------------------------------------------------------------------------------------------------ //
@@ -364,36 +358,36 @@ async function initApp() {
     try {
         globals.mainContainer = await waitForContainer(containerSelectors.main, {
             label: 'Main',
-            logger: defaultLogger,
+            logger: logger,
             onReady: handleMain
         });
 
         globals.marketTabsContainer = await waitForContainer(containerSelectors.marketTabs, {
             label: 'MarketTabs',
-            logger: defaultLogger,
+            logger: logger,
             onReady: handleMarketTabs
         });
 
         globals.portfolioContainer = await waitForContainer(containerSelectors.portfolio, {
             label: 'Portfolio',
-            logger: defaultLogger,
+            logger: logger,
             onReady: handlePortfolio
         });
 
         globals.balanceContainer = await waitForContainer(containerSelectors.balance, {
             label: 'Balance',
-            logger: defaultLogger,
+            logger: logger,
             onReady: handleBalance
         });
 
         globals.profitContainer = await waitForContainer(containerSelectors.profit, {
             label: 'Profit',
-            logger: defaultLogger,
+            logger: logger,
             onReady: handleProfit
         });
 
     } catch (error) {
-        console.error("Error while waiting for the container:", error);
+        logger.error("Error while waiting for the container:", error);
     }
 }
 

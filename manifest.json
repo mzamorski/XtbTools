@@ -23,6 +23,7 @@
       "matches": ["*://xstation5.xtb.com/*"],
       "css": ["styles.css"],
       "js": [
+        "logger.js",
         "utils.js",
         "Models/AssetRowInfo.js",
         "Models/RowMarkerType.js",
