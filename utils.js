@@ -74,19 +74,23 @@ function waitForElement(selector, options = {}) {
     });
 }
 
-async function waitForContainer(selector, name = 'Container', options = {}) {
-    const label = name;
-    const { onReady, ...waitOptions } = options;
+async function waitForContainer(selector, options = {}) {
+    const label = options.label;
+    const { onReady, logger, ...waitOptions } = options;
     
-    console.log(`Waiting for ${label}...`);
+    if (label) {
+        logger.log(`Waiting for container '${label}'...`);
+    }
 
     try {
         const el = await waitForElement(selector, {
             ...waitOptions,
-            errorMsg: waitOptions.errorMsg || `${label} not found!`
+            errorMsg: waitOptions.errorMsg || `'${label}' not found!`
         });
 
-        console.log(`${label} found.`);
+         if (label) {
+            logger.log(`Container '${label}' found.`);
+        }
 
         if (typeof onReady === 'function') {
             onReady(el);
@@ -95,6 +99,6 @@ async function waitForContainer(selector, name = 'Container', options = {}) {
         return el;
 
     } catch (error) {
-        console.error(`Error while waiting for the container (${label}):`, error);
+        logger.error(`Error while waiting for the container ('${label}'):`, error);
     }
 }

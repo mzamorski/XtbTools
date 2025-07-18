@@ -25,6 +25,12 @@ let hasCollapsedOnce = false;
 let rowFilter = createRowFilter();
 let rowMarker = createRowMarker();
 
+const defaultLogger = {
+    log: (...args) => console.log(`[${settings.appShortName}]`, ...args),
+    warn: (...args) => console.warn(`[${settings.appShortName}]`, ...args),
+    error: (...args) => console.error(`[${settings.appShortName}]`, ...args)
+};
+
 // Przy inicjalizacji (wczytaniu ustawień)
 chrome.storage.sync.get([
     'selectedFilter', 'selectedMarker',
@@ -385,7 +391,7 @@ function handleProfit(container) {
     }
 
     if (settings.isFakeProfitEnabled) {
-        const amount = getRandom(120000, 150000);
+        const amount = getRandom(190000, 200000);
 
         span.textContent = formatCurrency(amount);
         span.class = "positive";
@@ -459,20 +465,35 @@ console.log(settings.appFullName + " has started.");
 // Top-level async initialization function
 async function initApp() {
     try {
-        globals.mainContainer = await waitForContainer(containerSelectors.main);
-        handleMain();
+        globals.mainContainer = await waitForContainer(containerSelectors.main, {
+            label: 'Main',
+            logger: defaultLogger,
+            onReady: handleMain
+        });
 
-        globals.marketTabsContainer = await waitForContainer(containerSelectors.marketTabs);
-        handleMarketTabs();
+        globals.marketTabsContainer = await waitForContainer(containerSelectors.marketTabs, {
+            label: 'MarketTabs',
+            logger: defaultLogger,
+            onReady: handleMarketTabs
+        });
 
-        globals.portfolioContainer = await waitForContainer(containerSelectors.portfolio);
-        handlePortfolio();
+        globals.portfolioContainer = await waitForContainer(containerSelectors.portfolio, {
+            label: 'Portfolio',
+            logger: defaultLogger,
+            onReady: handlePortfolio
+        });
 
-        globals.balanceContainer = await waitForContainer(containerSelectors.balance);
-        handleBalance();
+        globals.balanceContainer = await waitForContainer(containerSelectors.balance, {
+            label: 'Balance',
+            logger: defaultLogger,
+            onReady: handleBalance
+        });
 
-        globals.profitContainer = await waitForContainer(containerSelectors.profit);
-        handleProfit();
+        globals.profitContainer = await waitForContainer(containerSelectors.profit, {
+            label: 'Profit',
+            logger: defaultLogger,
+            onReady: handleProfit
+        });
 
     } catch (error) {
         console.error("Error while waiting for the container:", error);
