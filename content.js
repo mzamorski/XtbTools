@@ -10,7 +10,9 @@ let settings = {
     isNegativeProfitHidden: true,
     isAutoCollapseEnabled: true,
     labelMap: new Map(),
-    hiddenMarketTabs: []
+    hiddenMarketTabs: [],
+
+    fakeProfit: { min: 190000, max: 200000 }
 }
 
 let globals = {
@@ -67,7 +69,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         settings.labelMap = parseAccountLabelMap(message.accountLabelsText ?? '');
         settings.hiddenMarketTabs = parseHiddenMarketTabs(message.hiddenMarketTabsText ?? '');
 
-        handleRows(globals.portfolioContainer);
+        handlePortfolioRows(globals.portfolioContainer);
         handleProfit();
         handleBalance();
         handleMain();
@@ -145,7 +147,7 @@ function handleMain(container) {
     });
 }
 
-function handleRows(container) {
+function handlePortfolioRows(container) {
     container = container || globals.portfolioContainer;
 
     const rows = container.querySelectorAll("div.slick-row");
@@ -167,7 +169,7 @@ function handleRows(container) {
         if (settings.isAutoCollapseEnabled) {
             if (!hasCollapsedOnce) {
                 if (rowInfo.isExpanded) {
-                    console.debug("Row will be collapsed", row);
+                    //console.debug("Row will be collapsed", row);
 
                     const toggle = row.querySelector('.slick-group-toggle');
                     if (toggle) toggle.click();
@@ -217,8 +219,6 @@ function handleRows(container) {
             rowMarker.apply(row);
         }
 
-        
-
         // Trade type
         const tradeTypeNode = row.children[1];
         const tradeType = TradeType.parse(tradeTypeNode.textContent);
@@ -240,11 +240,11 @@ function handleRows(container) {
 function handlePortfolio(container) {
     container = container || globals.portfolioContainer;
 
-    //handleRows(container);
+    //handlePortfolioRows(container);
 
     const observer = new MutationObserver(mutations => {
         //console.log("Zmiana drzewa DOM.");
-        handleRows(container);
+        handlePortfolioRows(container);
     });
 
     // const observer = new MutationObserver((mutationsList) => {
@@ -263,7 +263,7 @@ function handlePortfolio(container) {
     //     }
 
     //     if (shouldHandleRows) {
-    //         handleRows(container);
+    //         handlePortfolioRows(container);
     //     }
     // });
 
@@ -286,7 +286,7 @@ function handleProfit(container) {
     }
 
     if (settings.isFakeProfitEnabled) {
-        const amount = getRandom(190000, 200000);
+        const amount = getRandom(settings.fakeProfit.min, settings.fakeProfit.max);
 
         span.textContent = formatCurrency(amount);
         span.class = "positive";
