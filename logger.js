@@ -19,6 +19,10 @@ class Logger {
         return `[${this.appName}]`;
     }
 
+    test(...args) {
+        console.debug(this._prefix(), ...args);
+    }
+
     debug(...args) {
         if (this._shouldLog('debug')) {
             console.debug(this._prefix(), ...args);

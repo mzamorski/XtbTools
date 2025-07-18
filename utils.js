@@ -7,6 +7,15 @@ function parseNumberOrDefault(value, defaultValue = 0) {
     return isNaN(num) ? defaultValue : num;
 }
 
+function parseMoney(input) {
+    if (typeof input !== 'string') return NaN;
+    
+    const normalized = input.replace(/\s/g, ''); 
+    
+    return parseFloat(normalized);
+}
+
+
 function getRandom(min, max, decimals = 2) {
     const factor = Math.pow(10, decimals);
     return Math.floor((Math.random() * (max - min) + min) * factor) / factor;

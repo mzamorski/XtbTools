@@ -82,6 +82,27 @@ class DarkOverlayRowMarker extends RowMarker {
     }    
 }
 
+class ProfitableRowMarker extends RowMarker {
+    static apply(row) {
+        row.style.setProperty(
+            'background-image',
+            'linear-gradient(to left, rgba(0, 128, 0, 0.3) 0%, rgba(0, 128, 0, 0) 40%)',
+            'important'
+        );
+    }
+
+    apply(row) {
+        ProfitableRowMarker.apply(row);
+    }
+
+    clear() {
+        super.clear(row);
+        
+        row.style.removeProperty('background-image');       
+        row.style.removeProperty('linear-gradient');       
+    }
+}
+
 class HiddenRowMarker extends RowMarker {
     static apply(row) {
         row.style.setProperty('display', 'none');

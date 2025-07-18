@@ -14,17 +14,23 @@ const TradeType = {
 };
 
 class AssetRowInfo {
-    constructor(isParent, assetType, isExpanded, assetName, amount, description) {
+    constructor(node, isParent, assetType, isExpanded, assetName, amount, description, tradeType) {
+        this.node = node;
         this.isParent = isParent;
         this.assetType = assetType;
         this.isExpanded = isExpanded;
         this.assetName = assetName;
         this.amount = amount;
         this.description = description;
+        this.tradeType = tradeType;
     }
 
     static fromRow(row) {
         let assetType = '', isExpanded = false, assetName = '', amount = '', description = '';
+
+        // Trade type
+        const tradeTypeNode = row.children[1];
+        let tradeType = TradeType.parse(tradeTypeNode.textContent);
 
         const isParentRow = row.classList.contains('slick-group');
         if (isParentRow) {
@@ -36,7 +42,6 @@ class AssetRowInfo {
 
             const assetInfoNode = row.querySelector("span.slick-group-title > div");
 
-            // Nazwa akcji – tylko tekst spoza spanów (czyli czysty tekstowy node)
             assetName = assetInfoNode
                 ? Array.from(assetInfoNode.childNodes)
                     .filter(n => n.nodeType === Node.TEXT_NODE)
@@ -48,6 +53,6 @@ class AssetRowInfo {
             description = assetInfoNode?.querySelector('.slick-group-toggle-description')?.textContent.trim() ?? '';
         }
 
-        return new AssetRowInfo(isParentRow, assetType, isExpanded, assetName, amount, description);
+        return new AssetRowInfo(row, isParentRow, assetType, isExpanded, assetName, amount, description, tradeType);
     }
 }

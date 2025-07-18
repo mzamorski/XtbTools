@@ -54,7 +54,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     logger.debug("Message: ", message);
 
     if (message.type === 'settingsChanged') {
-        logger.log("Otrzymano aktualizację ustawień:", message);
+        logger.debug("Settings updated", message);
 
         rowFilter = createRowFilter(message.selectedFilter);
         rowMarker = createRowMarker(message.selectedMarker);
@@ -82,14 +82,16 @@ function createRowMarker(name) {
 }
 
 function parseAccountLabelMap(text) {
-  const map = new Map();
-  text.split('\n').forEach(line => {
-    const [login, label] = line.split(':').map(x => x?.trim());
-    if (login && label) {
-      map.set(login, label);
-    }
-  });
-  return map;
+    const map = new Map();
+
+    text.split('\n').forEach(line => {
+        const [login, label] = line.split(':').map(x => x?.trim());
+
+        if (login && label) {
+            map.set(login, label);
+        }
+    });
+    return map;
 }
 
 function parseHiddenMarketTabs(text) {
@@ -143,6 +145,17 @@ function handleMain(container) {
     });
 }
 
+function handlePortfolioRows_AutoCollapse(rowInfo) {
+    if (!hasCollapsedOnce) {
+        if (rowInfo.isExpanded) {
+            logger.debug("Row will be collapsed", rowInfo.node);
+
+            const toggle = rowInfo.node.querySelector('.slick-group-toggle');
+            if (toggle) toggle.click();
+        }
+    }
+}
+
 function handlePortfolioRows(container) {
     container = container || globals.portfolioContainer;
 
@@ -154,31 +167,24 @@ function handlePortfolioRows(container) {
     rows.forEach(row => {
         logger.debug("Row: ", row);
 
-        // Wymagane czyszczenie by nowo dodane wiersze (np. rozwinięcie grupy wyżej) nie miały błędnie oznaczonego stylu.
-        rowMarker.clear(row);
-
-        let markRow = false;
-
         const rowInfo = AssetRowInfo.fromRow(row);
-        logger.debug("RowInfo: ", rowInfo);
+        logger.test("RowInfo: ", rowInfo);
 
         if (settings.isAutoCollapseEnabled) {
-            if (!hasCollapsedOnce) {
-                if (rowInfo.isExpanded) {
-                    logger.debug("Row will be collapsed", row);
-
-                    const toggle = row.querySelector('.slick-group-toggle');
-                    if (toggle) toggle.click();
-                }
-            }
+            handlePortfolioRows_AutoCollapse(rowInfo);
         }
 
+        let markRow = false;
         let color;
+
+        // Wymagane czyszczenie by nowo dodane wiersze (np. rozwinięcie grupy wyżej) nie miały błędnie oznaczonego stylu.
+        rowMarker.clear(row);
+        ProfitableRowMarker.clear(row);
 
         // Parent row
         if (rowInfo.isParent) {      
             DarkOverlayRowMarker.apply(row);
-
+        
             markNextChildren = false;
 
             if (rowFilter.matches(rowInfo)) {
@@ -228,6 +234,19 @@ function handlePortfolioRows(container) {
         else {
             tradeTypeNode.style.removeProperty('color');
         }
+
+
+        if (rowInfo.isParent) {
+            // Net profit
+            const profitNode = row.children[9];
+            const profitAmount =  parseMoney(profitNode.textContent);
+            logger.test(profitAmount);
+
+            if (profitAmount > 0) {
+                ProfitableRowMarker.apply(row);
+            }                
+        }
+
     });
 
     hasCollapsedOnce = true;
