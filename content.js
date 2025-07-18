@@ -185,7 +185,7 @@ function handleAlerts(container) {
             
     onElementReady(containerSelectors.alert, el => {
         logger.test('An alert related to maintenance will be closed.')
-        el.remove();
+        style(el, { hide: true });
     });
 }
 
@@ -290,7 +290,6 @@ function handlePortfolio(container) {
     //handlePortfolioRows(container);
 
     const observer = new MutationObserver(mutations => {
-        //logger.log("Zmiana drzewa DOM.");
         handlePortfolioRows(container);
     });
 
